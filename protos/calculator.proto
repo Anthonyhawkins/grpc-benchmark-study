@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option go_package = "grpc-benchmark-study/calculator";
+
+package calculator;
+
+import "google/protobuf/empty.proto";
+
+message CalcMessage {
+  bytes payload = 1;
+}
+
+service CalculatorService {
+  rpc performCalculationBi (stream CalcMessage) returns (stream CalcMessage);
+  rpc performCalculationTo (CalcMessage) returns (google.protobuf.Empty);
+  rpc performCalculationFrom (google.protobuf.Empty) returns (stream CalcMessage);
+}
