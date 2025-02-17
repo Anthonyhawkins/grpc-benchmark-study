@@ -180,6 +180,10 @@ Next you can see how long the test ran for, in addition to average TPS, and max 
 Lastly, all requests and corresponding responses are tracked and displayed at the end.  Adding the `-latency-gt=<INT>` is a good way to only care about round trips greater than a specified threshold. 
 
 ## Findings
+For the tests the prime number `1000000000037` was chosen as it was a decent baseline round-trip of 5ms on the bidirectional stream.  All tests compute this prime.  Adding an extra `0` significantly increased the compute and latency, so prime numbers larger than this were not used. 
+
+All commands and full output can be seen in the [commands-and-outputs.txt](scripts/commands-and-outputs.txt) file.
+
 Based on the test results, the optimal configuration appears to be using unary mode with moderate concurrency and generating a single JWT token for the entire test (JWT once). For example, with 3 workers, the system achieved an average request TPS of about 404 while maintaining an average latency of around 6 ms. Although bidirectional mode yielded slightly lower TPS and lower latency in some cases, the increased scalability and overall throughput in the unary configuration with 3 workers provided the best balance between performance and latency. Additionally, generating a new JWT for every invocation introduced overhead that further reduced TPS, making the "once" approach more efficient for high-throughput benchmarks.
 
 Peak CPU usage spiked to ~28% during the 10 Worker Tests for the Server and about 40% for the client. Remaining usage hovered around 10%-20%.  CPU usage was determined by CPU charts in Google cloud.
