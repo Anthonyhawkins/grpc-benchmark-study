@@ -52,6 +52,8 @@ func getJWTToken(clientID string) string {
 	return token
 }
 
+var verbose *bool
+
 func main() {
 	// Command-line flags.
 	host := flag.String("host", "localhost:50051", "Server host:port")
@@ -65,6 +67,7 @@ func main() {
 	clientID := flag.String("client-id", "default-client", "Client ID")
 	latencyGt := flag.Int("latency-gt", 5, "Only print entries with latency greater than this (ms)")
 	jwtGen := flag.String("jwt-gen", "once", "JWT generation mode: once or every")
+	verbose = flag.Bool("verbose", false, "Verbose output")
 	flag.Parse()
 
 	// Set the JWT generation mode.
@@ -187,7 +190,6 @@ func runUnaryMode(client pb.CalculatorServiceClient, clientID string, workers, i
 				if res > maxRes {
 					maxRes = res
 				}
-				log.Printf("TPS: Requests: %d, Responses: %d", req, res)
 			case <-done:
 				return
 			}
@@ -225,8 +227,9 @@ func runUnaryMode(client pb.CalculatorServiceClient, clientID string, workers, i
 			}
 			tracker.RecordResponse(*respCalc)
 			if entry, ok := tracker.GetEntry(respCalc.ID); ok {
-				log.Printf("Received response for ID=%d, Latency=%dms, Response: %s",
-					respCalc.ID, entry.LatencyMs, respCalc.String())
+				if *verbose {
+					log.Printf("Received response for ID=%d, Latency=%dms, Response: %s", respCalc.ID, entry.LatencyMs, respCalc.String())
+				}
 				atomic.AddInt64(&responseCounter, 1)
 			} else {
 				log.Printf("Received response for unknown ID=%d", respCalc.ID)
@@ -273,10 +276,14 @@ func runUnaryMode(client pb.CalculatorServiceClient, clientID string, workers, i
 				reqCtx := metadata.NewOutgoingContext(context.Background(), reqMd)
 				_, err = client.PerformCalculationTo(reqCtx, msg)
 				if err != nil {
-					log.Printf("Worker %d: error sending transaction %d: %v", workerID, task, err)
+					if *verbose {
+						log.Printf("Worker %d: error sending transaction %d: %v", workerID, task, err)
+					}
 				} else {
 					atomic.AddInt64(&requestCounter, 1)
-					log.Printf("Worker %d: sent transaction %d", workerID, task)
+					if *verbose {
+						log.Printf("Worker %d: sent transaction %d", workerID, task)
+					}
 				}
 				time.Sleep(time.Duration(interval) * time.Millisecond)
 			}
@@ -299,11 +306,13 @@ func runUnaryMode(client pb.CalculatorServiceClient, clientID string, workers, i
 	avgRes := float64(totalRes) / float64(totalTicks)
 	log.Printf("==== SUMMARY ====")
 	log.Printf("Duration: %0.2fs", tracker.Duration().Seconds())
+	log.Printf(tracker.SentReceivedSummary())
 	log.Printf("Average Request TPS: %.2f, Max Request TPS: %d", avgReq, maxReq)
 	log.Printf("Average Response TPS: %.2f, Max Response TPS: %d", avgRes, maxRes)
 
-	// Print tracking summary for entries with latency greater than the threshold.
+	log.Printf(tracker.LatencySummary().String())
 	log.Printf("Tracking summary (only entries with latency > %dms):", latencyThreshold)
+	// Print tracking summary for entries with latency greater than the threshold.
 	for id, entry := range tracker.Data() {
 		if entry.LatencyMs > int64(latencyThreshold) {
 			log.Printf("ID=%d, Sent=%s, Response=%s, Received=%t, Latency=%dms",
@@ -346,7 +355,6 @@ func runBidiMode(client pb.CalculatorServiceClient, clientID string, interval, t
 				if res > maxRes {
 					maxRes = res
 				}
-				log.Printf("TPS: Requests: %d, Responses: %d", req, res)
 			case <-done:
 				return
 			}
@@ -387,8 +395,9 @@ func runBidiMode(client pb.CalculatorServiceClient, clientID string, interval, t
 			}
 			tracker.RecordResponse(*respCalc)
 			if entry, ok := tracker.GetEntry(respCalc.ID); ok {
-				log.Printf("Received response for ID=%d, Latency=%dms, Response: %s",
-					respCalc.ID, entry.LatencyMs, respCalc.String())
+				if *verbose {
+					log.Printf("Received response for ID=%d, Latency=%dms, Response: %s", respCalc.ID, entry.LatencyMs, respCalc.String())
+				}
 				atomic.AddInt64(&responseCounter, 1)
 			} else {
 				log.Printf("Received response for unknown ID=%d", respCalc.ID)
@@ -424,7 +433,9 @@ func runBidiMode(client pb.CalculatorServiceClient, clientID string, interval, t
 			break
 		}
 		atomic.AddInt64(&requestCounter, 1)
-		log.Printf("Sent bidirectional message %d", i)
+		if *verbose {
+			log.Printf("Sent bidirectional message %d", i)
+		}
 		time.Sleep(time.Duration(interval) * time.Millisecond)
 	}
 
@@ -447,8 +458,10 @@ func runBidiMode(client pb.CalculatorServiceClient, clientID string, interval, t
 	avgRes := float64(totalRes) / float64(totalTicks)
 	log.Printf("==== SUMMARY ====")
 	log.Printf("Duration: %0.2fs", tracker.Duration().Seconds())
+	log.Printf(tracker.SentReceivedSummary())
 	log.Printf("Average Request TPS: %.2f, Max Request TPS: %d", avgReq, maxReq)
 	log.Printf("Average Response TPS: %.2f, Max Response TPS: %d", avgRes, maxRes)
+	log.Printf(tracker.LatencySummary().String())
 	log.Printf("Tracking summary (only entries with latency > %dms):", latencyThreshold)
 	for id, entry := range tracker.Data() {
 		if entry.LatencyMs > int64(latencyThreshold) {

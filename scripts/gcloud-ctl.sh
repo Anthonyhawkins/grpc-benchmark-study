@@ -108,7 +108,7 @@ if [ "$ACTION" == "create" ]; then
     echo "  Server: $SERVER_NAME ($SERVER_IP)"
     echo "  Client: $CLIENT_NAME ($CLIENT_IP)"
 
-    echo"Next Steps:"
+    echo "Next Steps:"
     echo "  Interact with the client and server on the gcloud VMs. Recommended to open each in a separate terminal window"
     echo "  gcloud compute ssh grpc-client --zone=$ZONE --project=$PROJECT"
     echo "  gcloud compute ssh grpc-server --zone=$ZONE --project=$PROJECT"

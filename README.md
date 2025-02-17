@@ -78,6 +78,19 @@ The disadvantages of this setup are as follows:
 - bidirectional streams cannot be effectively load-balanced. Because each RPC is load-balanced, and not message. A single stream between a client and a server could potentially overload a single-node.  The load-balanced with current out-of-the-box solutions.
 - Client is limited to a single HTTP/2 stream for requests. With unary, we can scale up workers to make concurrent unary requests.  Creating multiple bidirectional streams could add additional complexity. 
 
+## Client Server Implementation Overview
+### Unary
+For the Client Unary / Server Stream implementation, the client generates messages which are then fed into a `go channel`. Each worker receives messages on the channel and executes Unary RPC calls to send the messages to the server.
+
+The client will then receive and correlate responses sent back from the server on the Server Stream RPC.
+![Unary Diagram](images/unary.png)
+### Bidirectional
+This implementation is much more straight-forward.  The client will generate messages as fast is it can and send them on the bidirectional stream.  It will also concurrently handle responses sent back from the server on the same stream and correlate the responses.
+![Bidirectional](images/bidirectional.png)
+
+
+
+
 ## Test Environment
 These tests were run on two Google Cloud compute VMS, specifically:
 ```bash
@@ -166,15 +179,27 @@ Next you can see how long the test ran for, in addition to average TPS, and max 
 
 Lastly, all requests and corresponding responses are tracked and displayed at the end.  Adding the `-latency-gt=<INT>` is a good way to only care about round trips greater than a specified threshold. 
 
+## Findings
+Based on the test results, the optimal configuration appears to be using unary mode with moderate concurrency and generating a single JWT token for the entire test (JWT once). For example, with 3 workers, the system achieved an average request TPS of about 404 while maintaining an average latency of around 6 ms. Although bidirectional mode yielded slightly lower TPS and lower latency in some cases, the increased scalability and overall throughput in the unary configuration with 3 workers provided the best balance between performance and latency. Additionally, generating a new JWT for every invocation introduced overhead that further reduced TPS, making the "once" approach more efficient for high-throughput benchmarks.
 
-## Generate gRPC Stubs
+| Test                              | Mode          | Workers | JWT Mode | Duration (s) | Total Entries | Received | Avg Req TPS | Max Req TPS | Avg Resp TPS | Max Resp TPS | Avg Latency (ms) | Median (ms) | 90th (ms) | 95th (ms) | Min (ms) | Max (ms) | StdDev (ms) |
+|-----------------------------------|---------------|---------|----------|--------------|---------------|----------|-------------|-------------|--------------|--------------|------------------|-------------|-----------|-----------|----------|----------|-------------|
+| Bidirectional                     | Bidirectional | N/A     | once     | 16.87        | 5000          | 5000     | 336.14      | 344         | 336.07       | 344          | 4.58             | 4.00        | 5.00      | 6.00      | 3        | 10       | 0.69        |
+| Unary - 1 Worker (JWT Once)       | Unary         | 1       | once     | 34.66        | 5000          | 5000     | 153.09      | 157         | 153.09       | 157          | 5.53             | 5.00        | 6.00      | 6.00      | 4        | 12       | 0.59        |
+| Unary - 2 Workers (JWT Once)      | Unary         | 2       | once     | 17.68        | 5000          | 5000     | 318.87      | 331         | 318.87       | 331          | 4.78             | 5.00        | 6.00      | 6.00      | 3        | 20       | 0.94        |
+| Unary - 3 Workers (JWT Once)      | Unary         | 3       | once     | 14.39        | 5000          | 5000     | 404.33      | 410         | 404.33       | 410          | 6.10             | 6.00        | 7.00      | 8.00      | 3        | 15       | 1.13        |
+| Unary - 10 Workers (JWT Once)     | Unary         | 10      | once     | 10.23        | 5000          | 4999     | 608.00      | 621         | 607.88       | 626          | 14.32            | 14.00       | 19.00     | 22.00     | 6        | 40       | 4.16        |
+| Unary - 1 Worker (JWT Every)      | Unary         | 1       | every    | 43.82        | 5000          | 5000     | 119.56      | 122         | 119.56       | 122          | 7.39             | 7.00        | 8.00      | 8.00      | 6        | 17       | 0.60        |
+| Unary - 2 Workers (JWT Every)     | Unary         | 2       | every    | 22.30        | 5000          | 5000     | 246.35      | 254         | 246.35       | 254          | 6.55             | 6.00        | 8.00      | 8.00      | 5        | 18       | 1.04        |
+| Unary - 3 Workers (JWT Every)     | Unary         | 3       | every    | 17.46        | 5000          | 5000     | 323.47      | 334         | 323.47       | 335          | 7.57             | 8.00        | 9.00      | 9.00      | 5        | 20       | 1.12        |
+| Unary - 10 Workers (JWT Every)    | Unary         | 10      | every    | 15.37        | 5000          | 5000     | 374.00      | 384         | 374.15       | 384          | 20.63            | 20.00       | 29.00     | 33.00     | 7        | 65       | 6.82        |
+
+
+
+## Scripts
+### Generate gRPC Stubs
 ```bash
 cd protos
 protoc --go_out=. --go-grpc_out=. calculator.proto
 ```
 
-### Example Commands
-A Prime number which would result in some CPU crunch and cause latency > 10ms on Mac Mini M4
-```bash
-go run client.go -host=127.0.0.1:50051 -mode=bidirectional -interval=2000 -transactions=3 -client-id=myClient -x 1000000000000037 -y 1 -operation=isprime
-```

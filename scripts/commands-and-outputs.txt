@@ -1,0 +1,175 @@
+
+
+
+# Prime Numbers
+# - 1000000000037 - ~5ms round-trip  (Used for tests)
+# - 10000000000037 - ~500ms round-trip (extra zero takes much longer to calculate)
+
+
+
+#
+# Bidirectional
+#
+./client -host=10.128.0.2:50051 -mode=bidirectional -interval=1 -transactions=5000 -client-id=myClient -x 1000000000037 -y 1 -operation=isprime -latency-gt=20 -jwt-gen=once
+2025/02/17 02:33:54 ==== SUMMARY ====
+2025/02/17 02:33:54 Duration: 16.87s
+2025/02/17 02:33:54 Total Entries: 5000, Received: 5000
+2025/02/17 02:33:54 Average Request TPS: 336.14, Max Request TPS: 344
+2025/02/17 02:33:54 Average Response TPS: 336.07, Max Response TPS: 344
+2025/02/17 02:33:54 Latency Summary:
+  Average Latency: 4.58 ms
+  Median Latency: 4.00 ms
+  90th Percentile: 5.00 ms
+  95th Percentile: 6.00 ms
+  Minimum Latency: 3 ms
+  Maximum Latency: 10 ms
+  Standard Deviation: 0.69 ms
+
+
+#
+# Unary - 1 Worker - JWT Once
+#
+./client -host=10.128.0.2:50051 -mode=unary -interval=1 -transactions=5000 -client-id=myClient -x 1000000000037 -y 1 -operation=isprime -latency-gt=20 -workers=1 -jwt-gen=once
+2025/02/17 02:35:46 ==== SUMMARY ====
+2025/02/17 02:35:46 Duration: 34.66s
+2025/02/17 02:35:46 Total Entries: 5000, Received: 5000
+2025/02/17 02:35:46 Average Request TPS: 153.09, Max Request TPS: 157
+2025/02/17 02:35:46 Average Response TPS: 153.09, Max Response TPS: 157
+2025/02/17 02:35:46 Latency Summary:
+  Average Latency: 5.53 ms
+  Median Latency: 5.00 ms
+  90th Percentile: 6.00 ms
+  95th Percentile: 6.00 ms
+  Minimum Latency: 4 ms
+  Maximum Latency: 12 ms
+  Standard Deviation: 0.59 ms
+
+#
+# Unary - 2 Workers - JWT Once
+#
+./client -host=10.128.0.2:50051 -mode=unary -interval=1 -transactions=5000 -client-id=myClient -x 1000000000037 -y 1 -operation=isprime -latency-gt=20 -workers=2 -jwt-gen=once
+2025/02/17 02:36:38 ==== SUMMARY ====
+2025/02/17 02:36:38 Duration: 17.68s
+2025/02/17 02:36:38 Total Entries: 5000, Received: 5000
+2025/02/17 02:36:38 Average Request TPS: 318.87, Max Request TPS: 331
+2025/02/17 02:36:38 Average Response TPS: 318.87, Max Response TPS: 331
+2025/02/17 02:36:38 Latency Summary:
+  Average Latency: 4.78 ms
+  Median Latency: 5.00 ms
+  90th Percentile: 6.00 ms
+  95th Percentile: 6.00 ms
+  Minimum Latency: 3 ms
+  Maximum Latency: 20 ms
+  Standard Deviation: 0.94 ms
+
+
+#
+# Unary - 3 Workers - JWT Once
+#
+./client -host=10.128.0.2:50051 -mode=unary -interval=1 -transactions=5000 -client-id=myClient -x 1000000000037 -y 1 -operation=isprime -latency-gt=20 -workers=3 -jwt-gen=once
+2025/02/17 02:37:32 ==== SUMMARY ====
+2025/02/17 02:37:32 Duration: 14.39s
+2025/02/17 02:37:32 Total Entries: 5000, Received: 5000
+2025/02/17 02:37:32 Average Request TPS: 404.33, Max Request TPS: 410
+2025/02/17 02:37:32 Average Response TPS: 404.33, Max Response TPS: 410
+2025/02/17 02:37:32 Latency Summary:
+  Average Latency: 6.10 ms
+  Median Latency: 6.00 ms
+  90th Percentile: 7.00 ms
+  95th Percentile: 8.00 ms
+  Minimum Latency: 3 ms
+  Maximum Latency: 15 ms
+  Standard Deviation: 1.13 ms
+
+#
+# Unary - 10 Workers - JWT Once
+# Notable observations - Latency begins to trend higher, 1 missed response (may not have waited long enough)
+./client -host=10.128.0.2:50051 -mode=unary -interval=1 -transactions=5000 -client-id=myClient -x 1000000000037 -y 1 -operation=isprime -latency-gt=20 -workers=10 -jwt-gen=once
+2025/02/17 02:38:54 ==== SUMMARY ====
+2025/02/17 02:38:54 Duration: 10.23s
+2025/02/17 02:38:54 Total Entries: 5000, Received: 4999
+2025/02/17 02:38:54 Average Request TPS: 608.00, Max Request TPS: 621
+2025/02/17 02:38:54 Average Response TPS: 607.88, Max Response TPS: 626
+2025/02/17 02:38:54 Latency Summary:
+  Average Latency: 14.32 ms
+  Median Latency: 14.00 ms
+  90th Percentile: 19.00 ms
+  95th Percentile: 22.00 ms
+  Minimum Latency: 6 ms
+  Maximum Latency: 40 ms
+  Standard Deviation: 4.16 ms
+
+
+#
+# Unary - 1 Worker - JWT Every Invocation
+# Notable observations - Latency beings to slightly increase with added JWT generation.
+./client -host=10.128.0.2:50051 -mode=unary -interval=1 -transactions=5000 -client-id=myClient -x 1000000000037 -y 1 -operation=isprime -latency-gt=20 -workers=1 -jwt-gen=every
+2025/02/17 02:43:03 ==== SUMMARY ====
+2025/02/17 02:43:03 Duration: 43.82s
+2025/02/17 02:43:03 Total Entries: 5000, Received: 5000
+2025/02/17 02:43:03 Average Request TPS: 119.56, Max Request TPS: 122
+2025/02/17 02:43:03 Average Response TPS: 119.56, Max Response TPS: 122
+2025/02/17 02:43:03 Latency Summary:
+  Average Latency: 7.39 ms
+  Median Latency: 7.00 ms
+  90th Percentile: 8.00 ms
+  95th Percentile: 8.00 ms
+  Minimum Latency: 6 ms
+  Maximum Latency: 17 ms
+  Standard Deviation: 0.60 ms
+
+
+#
+# Unary - 2 Workers - JWT Every Invocation
+#
+./client -host=10.128.0.2:50051 -mode=unary -interval=1 -transactions=5000 -client-id=myClient -x 1000000000037 -y 1 -operation=isprime -latency-gt=20 -workers=2 -jwt-gen=every
+2025/02/17 02:44:55 ==== SUMMARY ====
+2025/02/17 02:44:55 Duration: 22.30s
+2025/02/17 02:44:55 Total Entries: 5000, Received: 5000
+2025/02/17 02:44:55 Average Request TPS: 246.35, Max Request TPS: 254
+2025/02/17 02:44:55 Average Response TPS: 246.35, Max Response TPS: 254
+2025/02/17 02:44:55 Latency Summary:
+  Average Latency: 6.55 ms
+  Median Latency: 6.00 ms
+  90th Percentile: 8.00 ms
+  95th Percentile: 8.00 ms
+  Minimum Latency: 5 ms
+  Maximum Latency: 18 ms
+  Standard Deviation: 1.04 ms
+
+#
+# Unary - 3 Workers - JWT Every Invocation
+#
+./client -host=10.128.0.2:50051 -mode=unary -interval=1 -transactions=5000 -client-id=myClient -x 1000000000037 -y 1 -operation=isprime -latency-gt=20 -workers=3 -jwt-gen=every
+2025/02/17 02:45:58 ==== SUMMARY ====
+2025/02/17 02:45:58 Duration: 17.46s
+2025/02/17 02:45:58 Total Entries: 5000, Received: 5000
+2025/02/17 02:45:58 Average Request TPS: 323.47, Max Request TPS: 334
+2025/02/17 02:45:58 Average Response TPS: 323.47, Max Response TPS: 335
+2025/02/17 02:45:58 Latency Summary:
+  Average Latency: 7.57 ms
+  Median Latency: 8.00 ms
+  90th Percentile: 9.00 ms
+  95th Percentile: 9.00 ms
+  Minimum Latency: 5 ms
+  Maximum Latency: 20 ms
+  Standard Deviation: 1.12 ms
+
+
+#
+# Unary - 10 Workers - JWT Every Invocation
+# Notable observations - Latency begins to trend higher
+./client -host=10.128.0.2:50051 -mode=unary -interval=1 -transactions=5000 -client-id=myClient -x 1000000000037 -y 1 -operation=isprime -latency-gt=20 -workers=10 -jwt-gen=every
+2025/02/17 02:47:13 ==== SUMMARY ====
+2025/02/17 02:47:13 Duration: 15.37s
+2025/02/17 02:47:13 Total Entries: 5000, Received: 5000
+2025/02/17 02:47:13 Average Request TPS: 374.00, Max Request TPS: 384
+2025/02/17 02:47:13 Average Response TPS: 374.15, Max Response TPS: 384
+2025/02/17 02:47:13 Latency Summary:
+  Average Latency: 20.63 ms
+  Median Latency: 20.00 ms
+  90th Percentile: 29.00 ms
+  95th Percentile: 33.00 ms
+  Minimum Latency: 7 ms
+  Maximum Latency: 65 ms
+  Standard Deviation: 6.82 ms

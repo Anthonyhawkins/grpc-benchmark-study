@@ -79,7 +79,10 @@ func (s *calcServer) PerformCalculationBi(stream pb.CalculatorService_PerformCal
 			log.Printf("PerformCalculationBi: error receiving: %v", err)
 			return err
 		}
-		log.Printf("PerformCalculationBi: Received message from client")
+
+		if *verbose {
+			log.Printf("PerformCalculationBi: Received message from client")
+		}
 
 		payload, err := messagesigning.Verify(msg.GetPayload())
 		if err != nil {
@@ -131,7 +134,9 @@ func (s *calcServer) PerformCalculationTo(ctx context.Context, msg *pb.CalcMessa
 	}
 	clientID := clientIDs[0]
 
-	log.Printf("PerformCalculationTo: Received message for client %s", clientID)
+	if *verbose {
+		log.Printf("PerformCalculationTo: Received message for client %s", clientID)
+	}
 
 	// Look up the client for the given clientId.
 	s.mu.Lock()
@@ -163,7 +168,9 @@ func (s *calcServer) PerformCalculationTo(ctx context.Context, msg *pb.CalcMessa
 
 		select {
 		case ch <- response:
-			log.Printf("PerformCalculationTo: Sent message to client %s", clientID)
+			if *verbose {
+				log.Printf("PerformCalculationTo: Sent message to client %s", clientID)
+			}
 		default:
 			log.Printf("PerformCalculationTo: Channel for client %s is full, dropping message", clientID)
 		}
@@ -234,10 +241,13 @@ func (s *calcServer) PerformCalculationFrom(empty *emptypb.Empty, stream pb.Calc
 	}
 }
 
+var verbose *bool
+
 func main() {
 	// CLI flags for listen IP and port.
 	listenIP := flag.String("ip", "0.0.0.0", "Listen IP address")
 	port := flag.String("port", "50051", "Listen port")
+	verbose = flag.Bool("verbose", false, "Verbose output")
 	flag.Parse()
 
 	// Load JWT Pub Key

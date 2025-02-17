@@ -5,6 +5,7 @@ go 1.23
 require (
 	github.com/github/smimesign v0.2.0
 	github.com/golang-jwt/jwt/v4 v4.5.1
+	gonum.org/v1/gonum v0.15.1
 	google.golang.org/grpc v1.70.0
 	google.golang.org/protobuf v1.36.5
 )
